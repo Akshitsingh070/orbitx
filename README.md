@@ -89,13 +89,11 @@
 
 ---
 
-## 🎯 PS9 Requirements Coverage
+## 🎯 Checklist 
 
 | Requirement | Status |
 |------------|--------|
 | GitHub data extraction | ✅ |
-| Notion integration | ✅ |
-| Certifications | ✅ |
 | NLP-based skill extraction | ✅ |
 | Graph database (Neo4j) | ✅ |
 | Auto-generate knowledge graph | ✅ |
