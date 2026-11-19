@@ -1,6 +1,7 @@
 import httpx
 from typing import List, Dict, Any
 
+from config import settings
 from services.ai_service import extract_skills as ai_extract_skills
 from services.tech_directory import match_technologies, TECH_DIRECTORY
 from services.market_data import get_market_demand
@@ -9,8 +10,16 @@ from services.market_data import get_market_demand
 GITHUB_API = "https://api.github.com"
 
 
+def _auth_header(access_token: str = "") -> Dict[str, str]:
+    """Use the user's OAuth token when available, else the server-side
+    GITHUB_TOKEN fallback (empty header = anonymous, 60 req/hour)."""
+    token = access_token or settings.github_token
+    return {"Authorization": f"token {token}"} if token else {}
+
+
 async def fetch_repos(access_token: str) -> List[Dict]:
-    """Fetch user's repositories sorted by last updated (includes topics)."""
+    """Fetch user's repositories sorted by last updated (includes topics).
+    Requires the user's OAuth token — /user/repos has no server-token fallback."""
     headers = {
         "Authorization": f"token {access_token}",
         "Accept": "application/vnd.github.mercy-preview+json",
@@ -26,7 +35,7 @@ async def fetch_repos(access_token: str) -> List[Dict]:
 async def fetch_readme(access_token: str, owner: str, repo: str) -> str:
     """Fetch raw README content (truncated to 3000 chars)."""
     headers = {
-        "Authorization": f"token {access_token}",
+        **_auth_header(access_token),
         "Accept": "application/vnd.github.raw",
     }
     async with httpx.AsyncClient(timeout=15) as client:
@@ -44,7 +53,7 @@ async def fetch_readme(access_token: str, owner: str, repo: str) -> str:
 
 async def fetch_languages(access_token: str, owner: str, repo: str) -> Dict:
     """Fetch language breakdown for a repo."""
-    headers = {"Authorization": f"token {access_token}"}
+    headers = {**_auth_header(access_token)}
     async with httpx.AsyncClient(timeout=10) as client:
         try:
             res = await client.get(

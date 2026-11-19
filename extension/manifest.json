@@ -1,0 +1,15 @@
+{
+  "manifest_version": 3,
+  "name": "OrbitX — GitHub Tech Stack Peek",
+  "version": "1.0.0",
+  "description": "Instantly see the tech stack of any GitHub repo or profile, and jump to ORBITx for the full AI career analysis.",
+  "permissions": ["activeTab", "storage"],
+  "host_permissions": ["https://api.github.com/*"],
+  "action": {
+    "default_popup": "popup.html",
+    "default_title": "OrbitX — Tech Stack Peek"
+  },
+  "icons": {
+    "128": "icons/icon128.png"
+  }
+}

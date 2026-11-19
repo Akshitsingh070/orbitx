@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <link rel="stylesheet" href="popup.css" />
+  <title>OrbitX Peek</title>
+</head>
+<body>
+  <div class="glow" aria-hidden="true"></div>
+
+  <main class="card">
+    <header class="header">
+      <div class="brand">
+        <img src="icons/icon128.png" alt="OrbitX logo" class="brand-icon" />
+        <span class="wordmark">OrbitX</span>
+      </div>
+      <span class="header-pill">Tech Stack Peek</span>
+    </header>
+
+    <section id="content" class="content">
+      <div class="loading" id="loading">
+        <div class="spinner"></div>
+        <span>Scanning GitHub…</span>
+      </div>
+    </section>
+
+    <footer class="footer">
+      <button id="cta" class="cta" disabled>
+        <span>Full Analysis on OrbitX</span>
+        <span class="arrow">↗</span>
+      </button>
+      <div class="foot-note">AI career intelligence · orbitx-indol.vercel.app</div>
+    </footer>
+  </main>
+
+  <script src="popup.js"></script>
+</body>
+</html>
