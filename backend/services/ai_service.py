@@ -1,9 +1,19 @@
 import json
-from typing import Dict, List
+from typing import Dict, List, Optional
+
+import httpx
 
 from config import settings
 
-# Lazy-init Gemini model — only when API key is available
+OPENROUTER_URL = "https://openrouter.ai/api/v1/chat/completions"
+
+
+def _ai_ready() -> bool:
+    """True when at least one AI provider is configured."""
+    return bool(settings.openrouter_api_key or settings.gemini_api_key)
+
+
+# Lazy-init Gemini model — fallback provider, only when API key is available
 _model = None
 
 
@@ -28,6 +38,43 @@ def _get_model():
     return _model
 
 
+def _chat(prompt: str) -> Optional[str]:
+    """Send a prompt to the AI provider.
+    OpenRouter (OPENROUTER_API_KEY) is primary; Gemini is the fallback.
+    Returns response text, or None when no provider succeeded.
+    """
+    if settings.openrouter_api_key:
+        try:
+            res = httpx.post(
+                OPENROUTER_URL,
+                headers={
+                    "Authorization": f"Bearer {settings.openrouter_api_key}",
+                    "Content-Type": "application/json",
+                    "X-Title": "OrbitX",
+                },
+                json={
+                    "model": settings.openrouter_model,
+                    "messages": [{"role": "user", "content": prompt}],
+                },
+                timeout=60,
+            )
+            if res.status_code == 200:
+                content = res.json()["choices"][0]["message"]["content"]
+                print(f"AI: OpenRouter ({settings.openrouter_model}) responded")
+                return content.strip()
+            print(f"WARN: OpenRouter error {res.status_code}: {res.text[:200]}")
+        except Exception as e:
+            print(f"WARN: OpenRouter call failed: {e}")
+
+    model = _get_model()
+    if model is not None:
+        try:
+            return model.generate_content(prompt).text.strip()
+        except Exception as e:
+            print(f"WARN: Gemini fallback failed: {e}")
+    return None
+
+
 def extract_skills(
     source_type: str,
     name: str,
@@ -36,16 +83,9 @@ def extract_skills(
     commits: int = 0,
 ) -> dict:
     """
-    Extract skills from content using Gemini 1.5 Flash.
+    Extract skills from content using AI (OpenRouter, Gemini fallback).
     Works for GitHub repos, Notion pages, and cert descriptions.
     """
-    if settings.demo_mode or not settings.gemini_api_key:
-        return _mock_extraction(name, languages)
-
-    model = _get_model()
-    if model is None:
-        return _mock_extraction(name, languages)
-
     prompt = f"""You are a senior developer analyzing a {source_type} project to extract ALL technologies, frameworks, libraries, and concepts used.
 
 Project: {name}
@@ -75,39 +115,39 @@ IMPORTANT RULES:
 Return ONLY this JSON, no explanation, no markdown fences:
 {{"skills": [{{"name": "string", "category": "string", "confidence": 0.0}}], "concepts": ["string"], "domain": "string"}}
 """
+    if settings.demo_mode or not _ai_ready():
+        return _mock_extraction(name, languages)
+
+    text_response = _chat(prompt)
+    if text_response is None:
+        return _mock_extraction(name, languages)
+
     try:
-        response = model.generate_content(prompt)
-        text_response = response.text.strip()
-        # Clean markdown fences if model adds them
         text_response = text_response.replace("```json", "").replace("```", "").strip()
         result = json.loads(text_response)
         print(f"  AI extracted: {[s['name'] for s in result.get('skills', [])]}")
         return result
     except Exception as e:
-        print(f"  WARN: Gemini extraction failed: {e}")
+        print(f"  WARN: AI extraction failed: {e}")
         return _mock_extraction(name, languages)
 
 
 def generate_gap_explanation(skill_name: str, target_role: str) -> str:
     """Generate a one-sentence explanation of why a skill matters for a role."""
-    if settings.demo_mode or not settings.gemini_api_key:
+    if settings.demo_mode or not _ai_ready():
         return (
             f"{skill_name} is commonly required for {target_role} roles "
             f"and would strengthen your profile."
         )
 
-    model = _get_model()
-    if model is None:
-        return f"{skill_name} is commonly required for {target_role} roles."
-
     prompt = (
         f"In one sentence, explain why {skill_name} is important for a "
         f"{target_role}. Be direct and practical."
     )
-    try:
-        return model.generate_content(prompt).text.strip()
-    except Exception:
+    text = _chat(prompt)
+    if text is None:
         return f"{skill_name} is commonly required for {target_role} roles."
+    return text
 
 
 def generate_career_roadmap(
@@ -116,11 +156,7 @@ def generate_career_roadmap(
     gaps: List[Dict],
 ) -> dict:
     """Generate a learning roadmap for a target career role."""
-    if settings.demo_mode or not settings.gemini_api_key:
-        return _mock_roadmap(target_role, gaps)
-
-    model = _get_model()
-    if model is None:
+    if settings.demo_mode or not _ai_ready():
         return _mock_roadmap(target_role, gaps)
 
     prompt = f"""
@@ -144,9 +180,11 @@ Generate a learning roadmap as JSON:
 
 Return ONLY JSON, no explanation, no markdown. Generate 3-4 phases.
 """
+    text_response = _chat(prompt)
+    if text_response is None:
+        return _mock_roadmap(target_role, gaps)
+
     try:
-        response = model.generate_content(prompt)
-        text_response = response.text.strip()
         text_response = text_response.replace("```json", "").replace("```", "").strip()
         return json.loads(text_response)
     except Exception:

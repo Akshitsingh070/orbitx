@@ -14,8 +14,12 @@ services:
         sync: false   # set to your Vercel URL, e.g. https://orbitx-indol.vercel.app
       - key: GITHUB_TOKEN
         sync: false   # optional: public-repo PAT, raises anonymous limit to 5000/hour
+      - key: OPENROUTER_API_KEY
+        sync: false   # primary AI provider (openrouter.ai/keys)
+      - key: OPENROUTER_MODEL
+        value: "meta-llama/llama-3.3-70b-instruct:free"
       - key: GEMINI_API_KEY
-        sync: false
+        sync: false   # optional fallback
       - key: GITHUB_CLIENT_ID
         sync: false
       - key: GITHUB_CLIENT_SECRET

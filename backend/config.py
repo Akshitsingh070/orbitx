@@ -2,6 +2,9 @@ from pydantic_settings import BaseSettings
 
 
 class Settings(BaseSettings):
+    # AI — OpenRouter is the primary provider, Gemini is the fallback
+    openrouter_api_key: str = ""
+    openrouter_model: str = "meta-llama/llama-3.3-70b-instruct:free"
     gemini_api_key: str = ""
     github_client_id: str = ""
     github_client_secret: str = ""
